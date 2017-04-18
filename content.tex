@@ -188,6 +188,31 @@ But first understanding \laurie{something disappeared here?}
 advantage is that we have a static system we trace
 
 
+\subsection{Baseline}
+
+When investigating warmup characteristics it is important to understand the
+possible improvement limitations. Put differently, how much does warmup actually
+affect overall runtime performance.
+
+Kulkarni~\cite{kulkarni2011jit} conducted a study about the impact of modern
+multi-core machines on VM performance. He compared the impact of different
+threshold values and number of compilation threads on the Java HotSpot across
+several standard benchmarks. 
+
+he has fully static as base line
+
+fully compiled needs 9\% of time of pure interpretation
+30\% improvement if everything was compiled over default threshold
+
+
+
+How much overhead is actually imposed by jit-compilation?
+
+used standard benchmarks
+
+
+
+
 \subsubsection{Understand Meta-Tracing Warmup}
 
 Although it can be safely said that meta-tracing VMs generally have bad warmup
@@ -229,4 +254,6 @@ only improve warmup behaviour, but improve peak performance.
 
 \laurie{also need an evaluation section. some mention of the languages you might implement, the benchmarks you might use and how
 you will record performance (e.g.~using kalibera's method or the VM warmup blows hot and cold approach)}
+
+
 % \clearpage
