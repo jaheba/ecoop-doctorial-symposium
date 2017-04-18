@@ -1,0 +1,190 @@
+% \clearpage
+
+\section{Introduction}
+
+For over 60 years, \emph{just-in-time} (or dynamic) compilation (JIT) techniques
+have been used in software systems. They are used to improve time and space
+efficiency in software applications~\cite{aycock2003brief}. Although JITs don't
+add functionality to a system, they are a crucial element of influential
+software projects such as Lisp interpreters, Adaptive Fortran, Smalltalk, SELF,
+and Java Virtual Machines (JVMs) (c.f.~\cite{arnold2005survey}). Recently, the
+rapid spread of web applications relied -- among others -- on `jitted' virtual
+machines (VMs) for browser-side JavaScript.
+
+The usage of term `just-in-time' to refer to dynamic compilation only became
+popular in the 1990s. Originally used to describe a methodology in the car
+manufacturing industry, it came into fashion with the rise of Java. Whilst
+originally it might have been used to describe simple translation of VM
+instructions (v-code) to native machine-code instructions (n-code) `just' before
+execution (hence just-in-time), it nowadays generally describes dynamic
+compilation systems.
+
+However, developing and maintaining a JIT infrastructure for a high-performance
+VM entails high costs, which only a few organisations can afford. ``Until
+industrial-scale investment becomes available, the complexity of a traditional
+high-performance VM is too high for small-scale efforts to build and maintain a
+high-performance implementation for multiple hardware platforms and operating
+systems.''~\cite{wurthinger2013one}
+
+Unsurprisingly, only a few programming languages have high-performance
+implementations. Worse, often multiple implementation projects
+target the same language -- for example Java (Oracle's HotSpot VM, IBM's
+J9 VM) and JavaScript (e.g.~Google's V8, Mozilla's SpiderMonkey).
+
+
+
+
+A relatively new trend are tool-sets for \emph{constructing} high-performance
+language runtimes. Under the name of \emph{Eclipse
+OMR}~\cite{gaudet2016rebuilding}, IBM has open-sourced components of their
+industrial-strength JVM implementation J9 -- including \emph{JitBuilder}.
+Eclipse OMR has separated ``parts that implement Java semantics from the parts
+that provide key runtime capabilities''~\cite{eclipseOMR} and offers them as a
+runtime technology platform.
+
+A different approach is to derive dynamic compilers from the description of a
+language-interpreter, most notable realisations are the
+\emph{Truffle}~\cite{wurthinger2013one} and
+\emph{RPython/PyPy}~\cite{bolz2009tracing} projects. Both projects utilise
+annotations in the implementation of interpreters to generate JIT-compilers.
+
+Marr and Ducasse~\cite{marr2015tracing} investigated and compared Truffle and
+RPython by implementing VMs for SOM, a dynamic object-oriented language. They
+observed that both implementations reached ``roughly the same level of
+performance``, and stayed in one order of magnitude compared to the JVM. They
+argue, that ``neither of the two approaches has a fundamental advantage for the
+reached peak-performance. [...] With respect to the engineering, tracing has
+however significant benefits, because it requires language implementers to apply
+fewer optimizations to reach the same level of performance.''
+
+
+
+
+\section{Problem description}
+
+% It has been shown, that meta-tracing is an efficient way of writing jit-compiled
+% high-performance virtual machines (VM). \cite{marr2015tracing}
+
+% Explain JITs? What it is?
+
+% * What are VMs
+% * What is high-performance and why does it matter
+
+% * How can high-performance be achieved
+%     - jit / dynamic compilation
+
+
+\subsection{High-Performance Virtual Machines}
+
+Some VMs can compete with statically compiled and optimised languages in
+benchmarks. W\"urthinger et al.~\cite{wurthinger2013one} characterise these VMs
+as \emph{high-performance} if they are able to execute applications ``within a
+small multiple (1-3x)'' of the time taken by equivalent statically compiled
+code.
+
+However, construction and implementation of these VMs is a highly ``complex and
+expensive undertaking'', which only a few projects or organisations can afford.
+``Until industrial-scale investment becomes available, the complexity of a
+traditional high-performance VM is too high for small-scale efforts to build and
+maintain a high-performance implementation for multiple hardware platforms and
+operating systems.''~\cite{wurthinger2013one}
+
+Unsurprisingly, only a few programming languages have high-performance
+implementations. Worse, often multiple implementation projects
+target the same language -- for example Java (Oracle's HotSpot VM, IBM's
+J9 VM) and JavaScript (e.g.~Google's V8, Mozilla's SpiderMonkey).
+
+Although language projects have come to success despite lacking high-performance
+implementations, runtime performance is always a virtue. For instance, it is
+hard to imagine Java's widespread usage today, if it wasn't for the work spent
+optimising its runtime. Nowadays Java is considered a fast language, but this
+wasn't always true, as Tyma described in 1998: ``Java is slow. Java isn't just
+slow, it's really slow, surprisingly slow.''~\cite{tyma1998we}
+
+Thus, performance is always wanted / needed / hard to achieve -> leads into dilemma.
+
+Tratt~\cite{tratt_fast_enough} expresses that designers of programming languages
+face a dilemma: ``how much implementation is needed to show that a language
+design is good?''. Tratt argues that if too little effort is spent on a
+performant implementation a ``language will be dismissed out of hand as unusably
+slow'', but if too much work is put into the implementation instead of the
+design, then ``low-level implementation concerns can easily end up dictating
+higher-level design choices''.
+
+\subsection{Fast VMs In Fast Enough Time}
+
+Attempts to directly re-target sophisticated VMs for other languages have been
+made -- with varying success w.r.t.~performance. Bolz and
+Tratt~\cite{bolz14impact}~assert that ``a VM reflects the language, or group of
+languages, it was designed for. [...] If not, the \emph{semantic mismatch}
+between the two leads to poor performance for user programs.'' For example,
+implementations of the Python language for the JVM (Jython) and CLR (IronPython)
+weren't able to provide significant performance improvements over Python's
+default (non-optimising) interpreter.~\cite{bolz14impact}.
+
+% \clearpage
+
+\section{Warmup}
+
+When an optimising VM starts executing a program, it does so by executing a
+general, unoptimised version of said program. During this phase, the VM profiles
+the program and starts creating specialised and optimised code for frequently
+executed `hot' parts of the program. These newly compiled fragments can then be
+used instead of the slower initial representation. This phase -- the time before
+fast dynamically compiled code is executed -- is often referred to as warmup.
+It is said that a VM has reached peak performance, once it has finished warmup.
+
+Most systems use counters to determine whether a unit of code should be
+considered as cold or hot. Tracing-based VMs count how often a loop-body has
+been executed and start tracing a given loop, when a threshold value has been
+reached. When choosing a good threshold value, opportunity costs for simply
+continue running the program have to be considered. Put another way, the benefit
+of creating optimised code has to amortise its costs and naturally projects with
+smaller opportunity costs have lower threshold values. For comparison LuaJIT's
+fast tracer has a threshold of 56 iterations while RPython's meta tracer uses
+1039 cycles.
+
+Meta-traced VMs inherently have bad warmup-behaviour. In RPython based systems,
+user-programs are executed with a slow profiling-interpreter first. After a hot
+loop has been identified, it is meta-traced -- an interpreter for the host
+language is running the interpreter for the guest language. This phase is about
+200x slower than the already slow profiling-interpreter.
+
+The high overhead of meta-traced VMs impact their warmup characteristics
+twofold. The slow meta-tracing phase enforces a high threshold value, to ensure
+that compilation costs are likely amortised.
+
+\subsection{Approach}
+
+\subsubsection{Understand Meta-Tracing Warmup}
+What could be achieved?
+
+
+\subsubsection{Parallel Morphing} RPython's single threaded architecture disallows
+parallel execution of profiling-interpreter and the optimising trace compiler.
+Thus, time spent in optimising and translating collected traces is ``lost'',
+which could be used for advancing the program-state instead. Parallelising
+compilation reduces the performance penalty of tracing, and thus a lower
+threshold value could be used. As soon as optimised code is available, control
+of execution can be transfered to native-execution at a merge-point.
+
+\subsubsection{Basic Block Trace Collection} To even further decrease the load of
+tracing, operations should not be collected individually, but on a basic block
+level instead. Although, it does not decrease the overall workload, it reduces
+the time consumed during tracing.
+
+\subsubsection{Different Optimisation Levels}
+
+Given a collected trace, there is a large set of optimisations which could be
+conducted on that trace. To achieve earlier execution of
+optimised code, multiple optimisation levels could be used. For example,
+lightly optimised, medium-quality code can be generated and used quickly, whilst
+high-performance n-code is generated in parallel.
+
+This could have two effects. For one, the VM can warmup faster, since optimised
+code is available sooner. For two, the pressure to quickly generate high quality
+n-code is lower, because `fastish' code is already running. Thus, this could not
+only improve warmup behaviour, but improve peak performance.
+
+
+% \clearpage
