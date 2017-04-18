@@ -19,20 +19,39 @@ instructions (v-code) to native machine-code instructions (n-code) `just' before
 execution (hence just-in-time), it nowadays generally describes dynamic
 compilation systems.
 
+Some VMs can compete with statically compiled and optimised languages in
+benchmarks. W\"urthinger et al.~\cite{wurthinger2013one} characterise these VMs
+as \emph{high-performance} if they are able to execute applications ``within a
+small multiple (1-3x)'' of the time taken by equivalent statically compiled
+code.
+
 However, developing and maintaining a JIT infrastructure for a high-performance
 VM entails high costs, which only a few organisations can afford. ``Until
 industrial-scale investment becomes available, the complexity of a traditional
 high-performance VM is too high for small-scale efforts to build and maintain a
 high-performance implementation for multiple hardware platforms and operating
 systems.''~\cite{wurthinger2013one}
+Therefore, only a few programming languages have high-performance
+implementations. Worse, often multiple implementation projects target the same
+language -- for example Java (Oracle's HotSpot VM, IBM's J9 VM) and JavaScript
+(e.g.~Google's V8, Mozilla's SpiderMonkey).
 
-Unsurprisingly, only a few programming languages have high-performance
-implementations. Worse, often multiple implementation projects
-target the same language -- for example Java (Oracle's HotSpot VM, IBM's
-J9 VM) and JavaScript (e.g.~Google's V8, Mozilla's SpiderMonkey).
+Creators and implementors of new or competing programming languages face a
+dilemma, as Tratt~\cite{tratt_fast_enough} describes: ``how much implementation
+is needed to show that a language design is good?''. Tratt argues that if too
+little effort is spent on a performant implementation a ``language will be
+dismissed out of hand as unusably slow'', but if too much work is put into the
+implementation instead of the design, then ``low-level implementation concerns
+can easily end up dictating higher-level design choices''.
 
-
-
+Attempts to directly re-target sophisticated VMs for other languages have been
+made -- with varying success w.r.t.~performance. Bolz and
+Tratt~\cite{bolz14impact}~assert that ``a VM reflects the language, or group of
+languages, it was designed for. [...] If not, the \emph{semantic mismatch}
+between the two leads to poor performance for user programs.'' For example,
+implementations of the Python language for the JVM (Jython) and CLR (IronPython)
+weren't able to provide significant performance improvements over Python's
+default (non-optimising) interpreter.~\cite{bolz14impact}.
 
 A relatively new trend are tool-sets for \emph{constructing} high-performance
 language runtimes. Under the name of \emph{Eclipse
@@ -48,7 +67,7 @@ language-interpreter, most notable realisations are the
 \emph{RPython/PyPy}~\cite{bolz2009tracing} projects. Both projects utilise
 annotations in the implementation of interpreters to generate JIT-compilers.
 
-Marr and Ducasse~\cite{marr2015tracing} investigated and compared Truffle and
+Marr and Ducasse~\cite{marr2015tracing} conducted a  comparison of Truffle and
 RPython by implementing VMs for SOM, a dynamic object-oriented language. They
 observed that both implementations reached ``roughly the same level of
 performance``, and stayed in one order of magnitude compared to the JVM. They
@@ -57,10 +76,44 @@ reached peak-performance. [...] With respect to the engineering, tracing has
 however significant benefits, because it requires language implementers to apply
 fewer optimizations to reach the same level of performance.''
 
+\jasper{TODO: briefly describe that RPython suffers from bad warmup}
+
+
+\section{Warmup and Meta-Tracing}
+
+Two general approaches have been established for JIT-compilation: method and
+trace based systems. Method based JITs are akin to static compilers and compile
+functions as units of code. In contrast, tracing focuses on a dynamic form of
+program representation and traces are derived from observing execution of
+loop-bodies. The compiled code-fragments represent the control flow, which was
+taken during execution of the loop-body. Tracing usually operates on top of an
+existing interpreter and significant speedups can be accomplished quickly.
+Method based JITs require more tuning, which complicates design and
+implementation of such systems, but also offer overall more fine-grained
+control.
+
+Tracing systems associate counters with the program position (pc) of
+loop-headers. Each time a loop is encountered, its counter is incremented. After
+a threshold value is reached, recording begins and executed v-code instruction
+are collected. When execution reaches the loop's header again, recording stops
+and the collected instructions can be compiled to n-code. The next time
+the VM reaches the same loop-header, it can execute the compiled trace -- which
+is identified by the pc of the loop-header -- instead.
+
+Meta-tracing describes the layered execution of a guest-VM on top of a tracing
+host-VM. The host employs a JIT-compiler, which is able to optimise the
+execution of the guest-VM. Through layered execution, the host-VM thereby also
+traces and optimises the user's program. Since the host-VM has no understanding
+of the user's program, the guest-VM has to provide hints to indicate loops
+within the user's program. Without these hints the host-VM's JIT would only
+identify loops of the guest-VM. Each execution step of the user's program in the
+host-VM can be identified by an \emph{abstract}-pc, a tuple consisting of the
+host-VM's pc and guest-VM's pc (compare~\cite{sullivan2003dynamic}). However for
+tracing purposes, only the guest-VM's pc is essential.
 
 
 
-\section{Problem description}
+% \section{Problem description}
 
 % It has been shown, that meta-tracing is an efficient way of writing jit-compiled
 % high-performance virtual machines (VM). \cite{marr2015tracing}
@@ -74,57 +127,17 @@ fewer optimizations to reach the same level of performance.''
 %     - jit / dynamic compilation
 
 
-\subsection{High-Performance Virtual Machines}
 
-Some VMs can compete with statically compiled and optimised languages in
-benchmarks. W\"urthinger et al.~\cite{wurthinger2013one} characterise these VMs
-as \emph{high-performance} if they are able to execute applications ``within a
-small multiple (1-3x)'' of the time taken by equivalent statically compiled
-code.
+% Thus, performance is always wanted / needed / hard to achieve -> leads into dilemma.
 
-However, construction and implementation of these VMs is a highly ``complex and
-expensive undertaking'', which only a few projects or organisations can afford.
-``Until industrial-scale investment becomes available, the complexity of a
-traditional high-performance VM is too high for small-scale efforts to build and
-maintain a high-performance implementation for multiple hardware platforms and
-operating systems.''~\cite{wurthinger2013one}
 
-Unsurprisingly, only a few programming languages have high-performance
-implementations. Worse, often multiple implementation projects
-target the same language -- for example Java (Oracle's HotSpot VM, IBM's
-J9 VM) and JavaScript (e.g.~Google's V8, Mozilla's SpiderMonkey).
 
-Although language projects have come to success despite lacking high-performance
-implementations, runtime performance is always a virtue. For instance, it is
-hard to imagine Java's widespread usage today, if it wasn't for the work spent
-optimising its runtime. Nowadays Java is considered a fast language, but this
-wasn't always true, as Tyma described in 1998: ``Java is slow. Java isn't just
-slow, it's really slow, surprisingly slow.''~\cite{tyma1998we}
+% \subsection{Fast VMs In Fast Enough Time}
 
-Thus, performance is always wanted / needed / hard to achieve -> leads into dilemma.
-
-Tratt~\cite{tratt_fast_enough} expresses that designers of programming languages
-face a dilemma: ``how much implementation is needed to show that a language
-design is good?''. Tratt argues that if too little effort is spent on a
-performant implementation a ``language will be dismissed out of hand as unusably
-slow'', but if too much work is put into the implementation instead of the
-design, then ``low-level implementation concerns can easily end up dictating
-higher-level design choices''.
-
-\subsection{Fast VMs In Fast Enough Time}
-
-Attempts to directly re-target sophisticated VMs for other languages have been
-made -- with varying success w.r.t.~performance. Bolz and
-Tratt~\cite{bolz14impact}~assert that ``a VM reflects the language, or group of
-languages, it was designed for. [...] If not, the \emph{semantic mismatch}
-between the two leads to poor performance for user programs.'' For example,
-implementations of the Python language for the JVM (Jython) and CLR (IronPython)
-weren't able to provide significant performance improvements over Python's
-default (non-optimising) interpreter.~\cite{bolz14impact}.
 
 % \clearpage
 
-\section{Warmup}
+\subsection{Warmup}
 
 When an optimising VM starts executing a program, it does so by executing a
 general, unoptimised version of said program. During this phase, the VM profiles
@@ -154,9 +167,28 @@ The high overhead of meta-traced VMs impact their warmup characteristics
 twofold. The slow meta-tracing phase enforces a high threshold value, to ensure
 that compilation costs are likely amortised.
 
-\subsection{Approach}
+\section{Approach}
+
+The lackluster warmup behaviour of meta-traced VMs is caused by two things: the
+added overhead introduced by layered execution of VMs compared to normal
+tracing, and the high threshold value imposed by the slow tracing process.
+
+The key idea of my approach is that by utilising parallelism the threshold value
+can be reduced without actually improving the tracing overhead. Although the
+tracer has to observe actual execution, some task can be outsourced to different
+workers. For example compilation can happen in separate, dedicated threads.
+
+But first understanding
+
+% tracer has to see the world as it was
+advantage is that we have a static system we trace
+
 
 \subsubsection{Understand Meta-Tracing Warmup}
+
+Although it can be safely said that meta-tracing VMs generally have bad warmup
+characteristics, a closer look is required.
+
 What could be achieved?
 
 
@@ -186,5 +218,7 @@ code is available sooner. For two, the pressure to quickly generate high quality
 n-code is lower, because `fastish' code is already running. Thus, this could not
 only improve warmup behaviour, but improve peak performance.
 
+
+\subsection{Implementation}
 
 % \clearpage

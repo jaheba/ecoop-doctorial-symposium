@@ -7,12 +7,14 @@
  
 \usepackage{microtype}%if unwanted, comment out or use option "draft"
 
+\usepackage{softdev}
+
 %\graphicspath{{./graphics/}}%helpful if your graphic files are in another directory
 
 \bibliographystyle{plain}% the recommended bibstyle
 
 % Author macros::begin %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{Warmup in Meta-Traced Virtual Machines}
+\title{Improving Warmup in Meta-Traced Virtual Machines}
 % \titlerunning{A Sample LIPIcs Article} %optional, in case that the title is too long; the running title should fit into the top page column
 
 \author[]{Jasper B. Schulz}
@@ -27,7 +29,7 @@
 \Copyright{Jasper B. Schulz}%mandatory, please use full first names. LIPIcs license is "CC-BY";  http://creativecommons.org/licenses/by/3.0/
 
 \subjclass{Dummy classification -- please refer to \url{http://www.acm.org/about/class/ccs98-html}}% mandatory: Please choose ACM 1998 classifications from http://www.acm.org/about/class/ccs98-html . E.g., cite as "F.1.1 Models of Computation". 
-\keywords{Dummy keyword -- please provide 1--5 keywords}% mandatory: Please provide 1-5 keywords
+\keywords{warmup, meta-tracing}% mandatory: Please provide 1-5 keywords
 % Author macros::end %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Editor-only macros:: begin (do not touch as author)%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -47,8 +49,17 @@
 
 \maketitle
 
-\begin{abstract}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. 
+\begin{abstract} Adaptively optimising virtual machines (VM) have found
+widespread usage, which unite many advantages, including good performance and
+platform independence. Alas, due to high implementation efforts only a few VMs
+can deliver excellent performance. Recent research has focused on language
+implementation frameworks, which promise good trade-offs between performance and
+implementation efforts, including the idea of meta-tracing.\\
+
+However, meta-traced VMs inherently have bad warmup characteristics -- meaning
+that the time taken to reach peak performance is high. In my research I want to
+study the warmup behaviour of meta-traced VMs in detail. Further I want to
+develop and evaluate novel techniques to tackle the issue of slow warmup.
  \end{abstract}
 
 \
