@@ -2,13 +2,13 @@
 
 \section{Introduction}
 
-For over 60 years, \emph{just-in-time} (or dynamic) compilation (JIT) techniques
+For over 60 years, \emph{just-in-time} (JIT) (or dynamic) compilation techniques
 have been used in software systems. They are used to improve time and space
 efficiency in software applications~\cite{aycock2003brief}. Although JITs don't
 add functionality to a system, they are a crucial element of influential
 software projects such as Lisp interpreters, Adaptive Fortran, Smalltalk, SELF,
 and Java Virtual Machines (JVMs) (c.f.~\cite{arnold2005survey}). Recently, the
-rapid spread of web applications relied -- among others -- on `jitted' virtual
+rapid spread of web applications relied -- among others -- on `jitted' \laurie{`JIT compiling'?} virtual
 machines (VMs) for browser-side JavaScript.
 
 The usage of term `just-in-time' to refer to dynamic compilation only became
@@ -62,10 +62,11 @@ that provide key runtime capabilities''~\cite{eclipseOMR} and offers them as a
 runtime technology platform.
 
 A different approach is to derive dynamic compilers from the description of a
-language-interpreter, most notable realisations are the
-\emph{Truffle}~\cite{wurthinger2013one} and
+language-interpreter using the
+\emph{Truffle}~\cite{wurthinger2013one} or
 \emph{RPython/PyPy}~\cite{bolz2009tracing} projects. Both projects utilise
-annotations in the implementation of interpreters to generate JIT-compilers.
+annotations in the implementation of interpreters to generate JIT-compilers
+\laurie{this sentence doesn't really give a good flavour of what's going on}.
 
 Marr and Ducasse~\cite{marr2015tracing} conducted a  comparison of Truffle and
 RPython by implementing VMs for SOM, a dynamic object-oriented language. They
@@ -77,12 +78,13 @@ however significant benefits, because it requires language implementers to apply
 fewer optimizations to reach the same level of performance.''
 
 \jasper{TODO: briefly describe that RPython suffers from bad warmup}
+\laurie{you can cite the `VM warmup blows hot and cold' arxiv paper}
 
 
 \section{Warmup and Meta-Tracing}
 
 Two general approaches have been established for JIT-compilation: method and
-trace based systems. Method based JITs are akin to static compilers and compile
+trace based systems. Method based JITs are roughly akin to static compilers and compile
 functions as units of code. In contrast, tracing focuses on a dynamic form of
 program representation and traces are derived from observing execution of
 loop-bodies. The compiled code-fragments represent the control flow, which was
@@ -92,7 +94,7 @@ Method based JITs require more tuning, which complicates design and
 implementation of such systems, but also offer overall more fine-grained
 control.
 
-Tracing systems associate counters with the program position (pc) of
+Tracing systems associate counters with the program position (PC) of
 loop-headers. Each time a loop is encountered, its counter is incremented. After
 a threshold value is reached, recording begins and executed v-code instruction
 are collected. When execution reaches the loop's header again, recording stops
@@ -101,7 +103,7 @@ the VM reaches the same loop-header, it can execute the compiled trace -- which
 is identified by the pc of the loop-header -- instead.
 
 Meta-tracing describes the layered execution of a guest-VM on top of a tracing
-host-VM. The host employs a JIT-compiler, which is able to optimise the
+host-VM \laurie{this is sort-of true, but might confuse more than it helps. i'd probably avoid suggesting it's layers of vms}. The host employs a JIT-compiler, which is able to optimise the
 execution of the guest-VM. Through layered execution, the host-VM thereby also
 traces and optimises the user's program. Since the host-VM has no understanding
 of the user's program, the guest-VM has to provide hints to indicate loops
@@ -145,19 +147,21 @@ the program and starts creating specialised and optimised code for frequently
 executed `hot' parts of the program. These newly compiled fragments can then be
 used instead of the slower initial representation. This phase -- the time before
 fast dynamically compiled code is executed -- is often referred to as warmup.
-It is said that a VM has reached peak performance, once it has finished warmup.
+It is said that a VM has reached peak performance once it has finished warmup
+\laurie{you might want to say ``a steady state of peak performance''}.
 
 Most systems use counters to determine whether a unit of code should be
-considered as cold or hot. Tracing-based VMs count how often a loop-body has
+considered as cold or hot. Tracing-based VMs typically count how often a loop-body has
 been executed and start tracing a given loop, when a threshold value has been
 reached. When choosing a good threshold value, opportunity costs for simply
-continue running the program have to be considered. Put another way, the benefit
+continue running the program have to be considered. \laurie{hard to parse sentence} Put another way, the benefit
 of creating optimised code has to amortise its costs and naturally projects with
 smaller opportunity costs have lower threshold values. For comparison LuaJIT's
 fast tracer has a threshold of 56 iterations while RPython's meta tracer uses
-1039 cycles.
+1039 cycles \laurie{help the reader and say ``because luajit is ...'',
+preferably with a citation}.
 
-Meta-traced VMs inherently have bad warmup-behaviour. In RPython based systems,
+Meta-traced VMs inherently \laurie{if it's inherent, you can't fix it ;) so i'd say ``currently'' or similar} have bad warmup-behaviour. In RPython based systems,
 user-programs are executed with a slow profiling-interpreter first. After a hot
 loop has been identified, it is meta-traced -- an interpreter for the host
 language is running the interpreter for the guest language. This phase is about
@@ -169,7 +173,7 @@ that compilation costs are likely amortised.
 
 \section{Approach}
 
-The lackluster warmup behaviour of meta-traced VMs is caused by two things: the
+The Lacklustre warmup behaviour of meta-traced VMs is caused by two things: the
 added overhead introduced by layered execution of VMs compared to normal
 tracing, and the high threshold value imposed by the slow tracing process.
 
@@ -178,7 +182,7 @@ can be reduced without actually improving the tracing overhead. Although the
 tracer has to observe actual execution, some task can be outsourced to different
 workers. For example compilation can happen in separate, dedicated threads.
 
-But first understanding
+But first understanding \laurie{something disappeared here?}
 
 % tracer has to see the world as it was
 advantage is that we have a static system we trace
@@ -187,9 +191,9 @@ advantage is that we have a static system we trace
 \subsubsection{Understand Meta-Tracing Warmup}
 
 Although it can be safely said that meta-tracing VMs generally have bad warmup
-characteristics, a closer look is required.
+characteristics, a closer look is required. What could be achieved?
 
-What could be achieved?
+\laurie{at the moment this sounds a bit like ``here's some engineering'' -- maybe phrase them more in terms of research challenges. ok, parallel morphing is too obvious for this to be worth doing. but say with basic blocks you could say something like ``Research question: can recording basic blocks make the overall performance better than recording individual instructions? My hypothesis is that the increase in latency will be offset by an increase in throughput''.}
 
 
 \subsubsection{Parallel Morphing} RPython's single threaded architecture disallows
@@ -217,7 +221,6 @@ This could have two effects. For one, the VM can warmup faster, since optimised
 code is available sooner. For two, the pressure to quickly generate high quality
 n-code is lower, because `fastish' code is already running. Thus, this could not
 only improve warmup behaviour, but improve peak performance.
-
 
 \subsection{Implementation}
 
