@@ -8,8 +8,8 @@ efficiency in software applications~\cite{aycock2003brief}. Although JITs don't
 add functionality to a system, they are a crucial element of influential
 software projects such as Lisp interpreters, Adaptive Fortran, Smalltalk, SELF,
 and Java Virtual Machines (JVMs) (c.f.~\cite{arnold2005survey}). Recently, the
-rapid spread of web applications relied -- among others -- on `jitted' \laurie{`JIT compiling'?} virtual
-machines (VMs) for browser-side JavaScript.
+rapid spread of web applications relied -- among others -- on JIT-compiling
+virtual machines (VMs) for browser-side JavaScript.
 
 The usage of term `just-in-time' to refer to dynamic compilation only became
 popular in the 1990s. Originally used to describe a methodology in the car
@@ -64,9 +64,14 @@ runtime technology platform.
 A different approach is to derive dynamic compilers from the description of a
 language-interpreter using the
 \emph{Truffle}~\cite{wurthinger2013one} or
-\emph{RPython/PyPy}~\cite{bolz2009tracing} projects. Both projects utilise
-annotations in the implementation of interpreters to generate JIT-compilers
-\laurie{this sentence doesn't really give a good flavour of what's going on}.
+\emph{RPython/PyPy}~\cite{bolz2009tracing} projects. Language implementors are
+responsible for writing an interpreter for their target language, utilising a
+provided toolchain. So-created runtimes employ JIT-compilers which can translate
+user programs to native-code by the means of \emph{dynamic partial evaluation}
+(Truffle) or meta-tracing (RPython). The benefit of these approaches is that
+language implementors don't directly interact with the dynamic-compilation
+system, but instead guide it through annotations in the source code of the
+newly written interpreters.
 
 Marr and Ducasse~\cite{marr2015tracing} conducted a  comparison of Truffle and
 RPython by implementing VMs for SOM, a dynamic object-oriented language. They
@@ -77,8 +82,11 @@ reached peak-performance. [...] With respect to the engineering, tracing has
 however significant benefits, because it requires language implementers to apply
 fewer optimizations to reach the same level of performance.''
 
-\jasper{TODO: briefly describe that RPython suffers from bad warmup}
-\laurie{you can cite the `VM warmup blows hot and cold' arxiv paper}
+In comparison to other dynamic compilation systems, meta-traced VMs have
+relatively lackluster warmup characteristics, meaning that it takes longer to
+generate and execute efficient and performant native
+code.~\cite{barrett2016virtual} In my research I want to improve the warmup
+behaviour of meta-tracing VMs.
 
 
 \section{Warmup and Meta-Tracing}
@@ -102,9 +110,9 @@ and the collected instructions can be compiled to n-code. The next time
 the VM reaches the same loop-header, it can execute the compiled trace -- which
 is identified by the pc of the loop-header -- instead.
 
-Meta-tracing describes the layered execution of a guest-VM on top of a tracing
-host-VM \laurie{this is sort-of true, but might confuse more than it helps. i'd probably avoid suggesting it's layers of vms}. The host employs a JIT-compiler, which is able to optimise the
-execution of the guest-VM. Through layered execution, the host-VM thereby also
+Meta-tracing describes the execution of a guest-VM on top of a tracing
+host-VM. The host employs a JIT-compiler, which is able to optimise the
+execution of the guest-VM. Through this layered execution, the host-VM thereby also
 traces and optimises the user's program. Since the host-VM has no understanding
 of the user's program, the guest-VM has to provide hints to indicate loops
 within the user's program. Without these hints the host-VM's JIT would only
@@ -147,17 +155,18 @@ the program and starts creating specialised and optimised code for frequently
 executed `hot' parts of the program. These newly compiled fragments can then be
 used instead of the slower initial representation. This phase -- the time before
 fast dynamically compiled code is executed -- is often referred to as warmup.
-It is said that a VM has reached peak performance once it has finished warmup
-\laurie{you might want to say ``a steady state of peak performance''}.
+It is said that a VM has reached a steady state of peak performance once it has
+finished warmup.
 
 Most systems use counters to determine whether a unit of code should be
 considered as cold or hot. Tracing-based VMs typically count how often a loop-body has
 been executed and start tracing a given loop, when a threshold value has been
 reached. When choosing a good threshold value, opportunity costs for simply
-continue running the program have to be considered. \laurie{hard to parse sentence} Put another way, the benefit
-of creating optimised code has to amortise its costs and naturally projects with
-smaller opportunity costs have lower threshold values. For comparison LuaJIT's
-fast tracer has a threshold of 56 iterations while RPython's meta tracer uses
+continue running the program have to be considered; the benefit
+of creating optimised code has to amortise its own creation costs. Language
+implementations with smaller opportunity costs use lower threshold values. For
+instance, LuaJIT's fast tracer has a threshold of just 56 iterations while
+RPython's meta tracer uses
 1039 cycles \laurie{help the reader and say ``because luajit is ...'',
 preferably with a citation}.
 
@@ -167,32 +176,38 @@ loop has been identified, it is meta-traced -- an interpreter for the host
 language is running the interpreter for the guest language. This phase is about
 200x slower than the already slow profiling-interpreter.
 
-The high overhead of meta-traced VMs impact their warmup characteristics
-twofold. The slow meta-tracing phase enforces a high threshold value, to ensure
-that compilation costs are likely amortised.
+The high overhead of meta-traced VMs to perform dynamic compilation impact their
+warmup characteristics twofold. The slow meta-tracing phase enforces a high
+threshold value, to ensure that compilation costs are likely amortised. To
+improve warmup the penalty for JIT-compilation has to be reduced, which would
+reflect in lower threshold values. One approach is to utilise parallelism to
+reduce the risk of needless compilation efforts.
+
+
+% Although the
+% tracer has to observe actual execution, some task can be outsourced to different
+% workers. For example compilation can happen in separate, dedicated threads.
+
+% But first understanding \laurie{something disappeared here?}
+
+% % tracer has to see the world as it was
+% advantage is that we have a static system we trace
 
 \section{Approach}
 
-The Lacklustre warmup behaviour of meta-traced VMs is caused by two things: the
-added overhead introduced by layered execution of VMs compared to normal
-tracing, and the high threshold value imposed by the slow tracing process.
+When investigating warmup characteristics and attempting to improve them it is
+important to understand the improvement limitations.
 
-The key idea of my approach is that by utilising parallelism the threshold value
-can be reduced without actually improving the tracing overhead. Although the
-tracer has to observe actual execution, some task can be outsourced to different
-workers. For example compilation can happen in separate, dedicated threads.
 
-But first understanding \laurie{something disappeared here?}
 
-% tracer has to see the world as it was
-advantage is that we have a static system we trace
+ Put differently, how much does warmup actually
+affect overall runtime performance.
 
+\laurie{also need an evaluation section. some mention of the languages you might implement, the benchmarks you might use and how
+you will record performance (e.g.~using kalibera's method or the VM warmup blows hot and cold approach)}
 
 \subsection{Baseline}
 
-When investigating warmup characteristics it is important to understand the
-possible improvement limitations. Put differently, how much does warmup actually
-affect overall runtime performance.
 
 Kulkarni~\cite{kulkarni2011jit} conducted a study about the impact of modern
 multi-core machines on VM performance. He compared the impact of different
@@ -211,8 +226,6 @@ How much overhead is actually imposed by jit-compilation?
 used standard benchmarks
 
 
-
-
 \subsubsection{Understand Meta-Tracing Warmup}
 
 Although it can be safely said that meta-tracing VMs generally have bad warmup
@@ -220,21 +233,54 @@ characteristics, a closer look is required. What could be achieved?
 
 \laurie{at the moment this sounds a bit like ``here's some engineering'' -- maybe phrase them more in terms of research challenges. ok, parallel morphing is too obvious for this to be worth doing. but say with basic blocks you could say something like ``Research question: can recording basic blocks make the overall performance better than recording individual instructions? My hypothesis is that the increase in latency will be offset by an increase in throughput''.}
 
+\jasper{write about rust}
 
-\subsubsection{Parallel Morphing} RPython's single threaded architecture disallows
-parallel execution of profiling-interpreter and the optimising trace compiler.
-Thus, time spent in optimising and translating collected traces is ``lost'',
-which could be used for advancing the program-state instead. Parallelising
-compilation reduces the performance penalty of tracing, and thus a lower
-threshold value could be used. As soon as optimised code is available, control
-of execution can be transfered to native-execution at a merge-point.
+\subsection{Improvements}
 
-\subsubsection{Basic Block Trace Collection} To even further decrease the load of
-tracing, operations should not be collected individually, but on a basic block
-level instead. Although, it does not decrease the overall workload, it reduces
-the time consumed during tracing.
+Just three of many possible
+
+\subsubsection{Parallel Morphing} Current meta-tracing system's single threaded
+architecture disallows parallel execution of interpreter and the tracing system.
+Thus, time spent in collecting, translating and optimising traces is ``lost'',
+which could be used for advancing program-state instead (opportunity costs).
+De-coupling compilation efforts from normal execution of user-programs could
+potentially reduce the performance penalty significantly.
+
+
+
+What is theoretically possible, assuming it works.
+
+What changes are necessary, can it practically work?
+
+Evaluating this approach requires a working system, which can 
+
+Before potential performance benefits or trade-offs can measured, 
+
+
+
+examine this question, 
+
+What are the requirements to allow this?
+
+
+\subsubsection{Basic-Block Trace Collection} Present tracing-solutions derive
+traces by collecting executed v-code instructions. To reduce load from the
+actual tracing process, basic-blocks could be collected instead. When the trace
+is later translated into a native representation, information about executed
+basic blocks is sufficient to restore control which was taken during execution.
+This idea is based on the parallel morphing approach, as it assumes that
+compilation of traces happens in parallel to normal interpreter execution.
+
+Basic-block tracing increases the latency before compiled native-code is
+available.
+
+% Although, it does not decrease the overall workload, it reduces
+% the time consumed during tracing.
 
 \subsubsection{Different Optimisation Levels}
+
+one size fits all
+
 
 Given a collected trace, there is a large set of optimisations which could be
 conducted on that trace. To achieve earlier execution of
@@ -247,13 +293,6 @@ code is available sooner. For two, the pressure to quickly generate high quality
 n-code is lower, because `fastish' code is already running. Thus, this could not
 only improve warmup behaviour, but improve peak performance.
 
-\subsection{Implementation}
-
-
-\subsection{Evaluation}
-
-\laurie{also need an evaluation section. some mention of the languages you might implement, the benchmarks you might use and how
-you will record performance (e.g.~using kalibera's method or the VM warmup blows hot and cold approach)}
 
 
 % \clearpage
