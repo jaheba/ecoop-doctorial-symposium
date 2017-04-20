@@ -89,7 +89,9 @@ code.~\cite{barrett2016virtual} In my research I want to improve the warmup
 behaviour of meta-tracing VMs.
 
 
-\section{Warmup and Meta-Tracing}
+\section{Background}
+
+\subsection{Tracing and Meta-Tracing}
 
 Two general approaches have been established for JIT-compilation: method and
 trace based systems. Method based JITs are roughly akin to static compilers and compile
@@ -165,23 +167,25 @@ reached. When choosing a good threshold value, opportunity costs for simply
 continue running the program have to be considered; the benefit
 of creating optimised code has to amortise its own creation costs. Language
 implementations with smaller opportunity costs use lower threshold values. For
-instance, LuaJIT's fast tracer has a threshold of just 56 iterations while
-RPython's meta tracer uses
-1039 cycles \laurie{help the reader and say ``because luajit is ...'',
-preferably with a citation}.
+instance, LuaJIT -- a traced based optimising VM for Lua -- employs a fast
+tracer with a threshold value of just 56 iterations, compared to RPython's slow
+meta-tracer, which uses 1039 cycles.
 
-Meta-traced VMs inherently \laurie{if it's inherent, you can't fix it ;) so i'd say ``currently'' or similar} have bad warmup-behaviour. In RPython based systems,
-user-programs are executed with a slow profiling-interpreter first. After a hot
-loop has been identified, it is meta-traced -- an interpreter for the host
-language is running the interpreter for the guest language. This phase is about
-200x slower than the already slow profiling-interpreter.
+Due to the overhead (when compared to traditional tracing systems), meta-traced
+VMs have bad warmup-behaviour. In RPython based systems, user-programs are
+executed with a slow profiling-interpreter first. After a hot loop has been
+identified, it is meta-traced -- an interpreter for the host language is
+executing the interpreter for the guest language. This phase is about 200x
+slower than the already slow profiling-interpreter.
 
 The high overhead of meta-traced VMs to perform dynamic compilation impact their
 warmup characteristics twofold. The slow meta-tracing phase enforces a high
-threshold value, to ensure that compilation costs are likely amortised. To
-improve warmup the penalty for JIT-compilation has to be reduced, which would
-reflect in lower threshold values. One approach is to utilise parallelism to
-reduce the risk of needless compilation efforts.
+threshold value, to ensure that compilation costs are likely amortised.
+
+
+
+% To improve warmup, the penalty for JIT-compilation has to be reduced. In practice, this would reflect in lower threshold values.
+
 
 
 % Although the
@@ -195,7 +199,20 @@ reduce the risk of needless compilation efforts.
 
 \section{Approach}
 
+In my research I want to investigate techniques that reduce the risk of needless
+compilation efforts by utilising parallelism. The motivation behind this
+reasoning is that modern hardware is increasingly providing more execution
+units. To fully utilise modern CPUs the workload has to be distributed across
+cores. Put a bit more bluntly, modern CPUs are offering computing capabilities
+basically for free, which can be used to support executing the main
+single-threaded task. I want to focus on the ifs and hows of distributing the
+meta-tracing workload across multiple CPU threads and thereby improving the
+warmup behaviour of meta-trace VMs.
+
+
 When investigating warmup characteristics and attempting to improve them it is
+
+
 important to understand the improvement limitations.
 
 
@@ -279,20 +296,20 @@ available.
 
 \subsubsection{Different Optimisation Levels}
 
-one size fits all
+In comparison to optimising static compilers, dynamic compilers have to be much
+more selective when deciding on optimisations to perform due to real-time
+constrains. RPython based VMs employ just one level of optimisations, which has
+to balance out compilation time needed and quality of generated quote. To
+improve warmup multiple optimisation levels could be used.to achieve earlier
+execution of optimised code, lightly optimised, medium-quality code can be
+generated and used quickly, whilst high-performance native code is generated in
+parallel.
 
-
-Given a collected trace, there is a large set of optimisations which could be
-conducted on that trace. To achieve earlier execution of
-optimised code, multiple optimisation levels could be used. For example,
-lightly optimised, medium-quality code can be generated and used quickly, whilst
-high-performance n-code is generated in parallel.
-
-This could have two effects. For one, the VM can warmup faster, since optimised
-code is available sooner. For two, the pressure to quickly generate high quality
-n-code is lower, because `fastish' code is already running. Thus, this could not
-only improve warmup behaviour, but improve peak performance.
-
+This could not only have the effect that the VM might warmup faster, since
+optimised code is available sooner, but the pressure to quickly generate high
+quality code is also lower. Because `fastish' code is already running,
+generating good code can take longer and thus it could not only improve warmup
+behaviour, but improve peak performance as well.
 
 
 % \clearpage
