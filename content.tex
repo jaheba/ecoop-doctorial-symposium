@@ -209,6 +209,7 @@ single-threaded task. I want to focus on the ifs and hows of distributing the
 meta-tracing workload across multiple CPU threads and thereby improving the
 warmup behaviour of meta-trace VMs.
 
+\subsection{Model}
 
 When investigating warmup characteristics and attempting to improve them it is
 
@@ -228,8 +229,8 @@ you will record performance (e.g.~using kalibera's method or the VM warmup blows
 
 Kulkarni~\cite{kulkarni2011jit} conducted a study about the impact of modern
 multi-core machines on VM performance. He compared the impact of different
-threshold values and number of compilation threads on the Java HotSpot across
-several standard benchmarks. 
+threshold values and number of compilation threads on the Java HotSpot VM across
+several Java benchmarks.
 
 he has fully static as base line
 
@@ -250,11 +251,23 @@ characteristics, a closer look is required. What could be achieved?
 
 \laurie{at the moment this sounds a bit like ``here's some engineering'' -- maybe phrase them more in terms of research challenges. ok, parallel morphing is too obvious for this to be worth doing. but say with basic blocks you could say something like ``Research question: can recording basic blocks make the overall performance better than recording individual instructions? My hypothesis is that the increase in latency will be offset by an increase in throughput''.}
 
+% However, to allow for safe 
+
+% What is theoretically possible, assuming it works.
+
+% What changes are necessary, can it practically work?
+
+% Evaluating this approach requires a working system, which can 
+
+% Before potential performance benefits or trade-offs can measured,
+
 \jasper{write about rust}
 
 \subsection{Improvements}
 
-Just three of many possible
+\jasper{TODO: quick introduction to what follows}
+
+% Just three of many possible
 
 \subsubsection{Parallel Morphing} Current meta-tracing system's single threaded
 architecture disallows parallel execution of interpreter and the tracing system.
@@ -263,21 +276,16 @@ which could be used for advancing program-state instead (opportunity costs).
 De-coupling compilation efforts from normal execution of user-programs could
 potentially reduce the performance penalty significantly.
 
+Writing a parallel execution runtime is hard; and often successful projects such
+as the standard Python interpreter impose a global-interpreter-lock (GIL). The
+GIL ensures that only one instruction can be executed at the same time and
+therefore provides certain safety guarantees, e.g. the atomicity of certain
+operations. In practice, the effects on performance of GILs heavily depend on
+the workload; IO-bound programs are less affected than computational bound ones.
 
-
-What is theoretically possible, assuming it works.
-
-What changes are necessary, can it practically work?
-
-Evaluating this approach requires a working system, which can 
-
-Before potential performance benefits or trade-offs can measured, 
-
-
-
-examine this question, 
-
-What are the requirements to allow this?
+Therefore, I want to investigate how true parallelism can be achieved in
+meta-traced VMs and how it impacts the way language implementers can use the
+meta-tracing framework.
 
 
 \subsubsection{Basic-Block Trace Collection} Present tracing-solutions derive
@@ -288,11 +296,9 @@ basic blocks is sufficient to restore control which was taken during execution.
 This idea is based on the parallel morphing approach, as it assumes that
 compilation of traces happens in parallel to normal interpreter execution.
 
-Basic-block tracing increases the latency before compiled native-code is
-available.
-
-% Although, it does not decrease the overall workload, it reduces
-% the time consumed during tracing.
+As a result of the added intermediate step, basic-block tracing should increase
+the latency before compiled native-code is available. However, I expect the
+overall performance to be higher, since normal interpretation can resume sooner.
 
 \subsubsection{Different Optimisation Levels}
 
