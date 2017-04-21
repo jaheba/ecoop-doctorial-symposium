@@ -33,7 +33,7 @@ high-performance implementation for multiple hardware platforms and operating
 systems.''~\cite{wurthinger2013one}
 Therefore, only a few programming languages have high-performance
 implementations. Worse, often multiple implementation projects target the same
-language -- for example Java (Oracle's HotSpot VM, IBM's J9 VM) and JavaScript
+language -- among these Java (Oracle's HotSpot VM, IBM's J9 VM) and JavaScript
 (e.g.~Google's V8, Mozilla's SpiderMonkey).
 
 Creators and implementors of new or competing programming languages face a
@@ -68,8 +68,8 @@ language-interpreter using the
 responsible for writing an interpreter for their target language, utilising a
 provided toolchain. So-created runtimes employ JIT-compilers which can translate
 user programs to native-code by the means of \emph{dynamic partial evaluation}
-(Truffle) or meta-tracing (RPython). The benefit of these approaches is that
-language implementors don't directly interact with the dynamic-compilation
+(Truffle) or \emph{meta-tracing} (RPython). The benefit of these approaches is that
+language implementors don't directly interact with the dynamic compilation
 system, but instead guide it through annotations in the source code of the
 newly written interpreters.
 
@@ -86,7 +86,7 @@ In comparison to other dynamic compilation systems, meta-traced VMs have
 relatively lackluster warmup characteristics, meaning that it takes longer to
 generate and execute efficient and performant native
 code.~\cite{barrett2016virtual} In my research I want to improve the warmup
-behaviour of meta-tracing VMs.
+behaviour of meta-traced VMs.
 
 
 \section{Background}
@@ -118,7 +118,7 @@ execution of the guest-VM. Through this layered execution, the host-VM thereby a
 traces and optimises the user's program. Since the host-VM has no understanding
 of the user's program, the guest-VM has to provide hints to indicate loops
 within the user's program. Without these hints the host-VM's JIT would only
-identify loops of the guest-VM. Each execution step of the user's program in the
+identify loops within the guest-VM. Each execution step of the user's program in the
 host-VM can be identified by an \emph{abstract}-pc, a tuple consisting of the
 host-VM's pc and guest-VM's pc (compare~\cite{sullivan2003dynamic}). However for
 tracing purposes, only the guest-VM's pc is essential.
@@ -164,8 +164,8 @@ Most systems use counters to determine whether a unit of code should be
 considered as cold or hot. Tracing-based VMs typically count how often a loop-body has
 been executed and start tracing a given loop, when a threshold value has been
 reached. When choosing a good threshold value, opportunity costs for simply
-continue running the program have to be considered; the benefit
-of creating optimised code has to amortise its own creation costs. Language
+continue running the program have to be considered;
+created optimised code has to amortise its own creation costs. Language
 implementations with smaller opportunity costs use lower threshold values. For
 instance, LuaJIT -- a traced based optimising VM for Lua -- employs a fast
 tracer with a threshold value of just 56 iterations, compared to RPython's slow
@@ -205,53 +205,50 @@ reasoning is that modern hardware is increasingly providing more execution
 units. To fully utilise modern CPUs the workload has to be distributed across
 cores. Put a bit more bluntly, modern CPUs are offering computing capabilities
 basically for free, which can be used to support executing the main
-single-threaded task. I want to focus on the ifs and hows of distributing the
-meta-tracing workload across multiple CPU threads and thereby improving the
-warmup behaviour of meta-trace VMs.
+single-threaded task.
 
-\subsection{Model}
+To summarize, I want to examine the hypothesis that parallelising meta-tracing
+will improve warmup behaviour and also lead to an overall performance increase.
 
-When investigating warmup characteristics and attempting to improve them it is
+% I want to focus on the ifs and hows of distributing the
+% meta-tracing workload across multiple CPU threads and thereby improving the
+% warmup behaviour of meta-trace VMs.
 
+\subsection{Evaluation}
 
-important to understand the improvement limitations.
+Since my work intends to improve execution performance of complex runtime
+systems, a key question is how to accurately benchmark the impact of changes to
+the system. I intend to approach this issue from several sides.
 
+Before developing and testing novel techniques, I want to explore potential
+optimisation limits. For this, I want to take inspiration from
+Kulkarni~\cite{kulkarni2011jit}, who conducted a study about the interaction of
+modern multi-core machines on the JVM performance. He compared the impact of
+different threshold values and number of compilation threads on the Java HotSpot
+VM across several Java benchmarks. He described that if all code was already
+compiled before execution, execution time is about 10x faster over
+interpretation and there is an 30\% improvement over execution using dynamic
+compilation.
 
+To measure overall runtime performance, I will use ``real-world'' benchmarks, which
+reflect the interplay of different components of meta-traced VMs on execution
+time. Kalibera and Jones~\cite{kalibera2013rigorous} provide a guide on how to
+do benchmarking ``right'' such that substantive statements can be made.
+To examine warmup behaviour in detail, I intend to use micro-benchmarks akin to
+Barret et al.~\cite{barrett2016virtual}. They have shown that VM warmup
+characteristics are often a lot more complex than often assumed.
 
- Put differently, how much does warmup actually
-affect overall runtime performance.
+For the baseline benchmarks I want to utilise the RPython meta-tracing platform.
+It is not only the most advanced meta-tracing framework to date, but the
+toolchain also offers great capabilities to inspect tracing and compilation
+footprints.
 
-\laurie{also need an evaluation section. some mention of the languages you might implement, the benchmarks you might use and how
-you will record performance (e.g.~using kalibera's method or the VM warmup blows hot and cold approach)}
-
-\subsection{Baseline}
-
-
-Kulkarni~\cite{kulkarni2011jit} conducted a study about the impact of modern
-multi-core machines on VM performance. He compared the impact of different
-threshold values and number of compilation threads on the Java HotSpot VM across
-several Java benchmarks.
-
-he has fully static as base line
-
-fully compiled needs 9\% of time of pure interpretation
-30\% improvement if everything was compiled over default threshold
-
-
-
-How much overhead is actually imposed by jit-compilation?
-
-used standard benchmarks
-
-
-\subsubsection{Understand Meta-Tracing Warmup}
-
-Although it can be safely said that meta-tracing VMs generally have bad warmup
-characteristics, a closer look is required. What could be achieved?
-
-\laurie{at the moment this sounds a bit like ``here's some engineering'' -- maybe phrase them more in terms of research challenges. ok, parallel morphing is too obvious for this to be worth doing. but say with basic blocks you could say something like ``Research question: can recording basic blocks make the overall performance better than recording individual instructions? My hypothesis is that the increase in latency will be offset by an increase in throughput''.}
-
-% However, to allow for safe 
+However, the RPython toolchain is probably not the right platform to
+implement parallel tracing functionalities in. Due to its single threaded design,
+I assess the effort to retrofit concurrency to the project higher than a trimmed
+down rewrite. For this I want to develop a simple meta-tracing system written in
+rust. I'm confident that rust's language design (a safe systems-language) suits
+my needs and also allows for more predictable performance compared to RPython.
 
 % What is theoretically possible, assuming it works.
 
@@ -261,13 +258,12 @@ characteristics, a closer look is required. What could be achieved?
 
 % Before potential performance benefits or trade-offs can measured,
 
-\jasper{write about rust}
+% \jasper{write about rust}
 
-\subsection{Improvements}
+\subsection{Techniques}
 
-\jasper{TODO: quick introduction to what follows}
-
-% Just three of many possible
+In the following I describe some techniques which could be applied to address my
+hypothesis.
 
 \subsubsection{Parallel Morphing} Current meta-tracing system's single threaded
 architecture disallows parallel execution of interpreter and the tracing system.
@@ -283,10 +279,8 @@ therefore provides certain safety guarantees, e.g. the atomicity of certain
 operations. In practice, the effects on performance of GILs heavily depend on
 the workload; IO-bound programs are less affected than computational bound ones.
 
-Therefore, I want to investigate how true parallelism can be achieved in
-meta-traced VMs and how it impacts the way language implementers can use the
-meta-tracing framework.
-
+Thus, with parallel morphing I want to research if and how true parallelism can
+be achieved in meta-traced VMs.
 
 \subsubsection{Basic-Block Trace Collection} Present tracing-solutions derive
 traces by collecting executed v-code instructions. To reduce load from the
@@ -306,7 +300,7 @@ In comparison to optimising static compilers, dynamic compilers have to be much
 more selective when deciding on optimisations to perform due to real-time
 constrains. RPython based VMs employ just one level of optimisations, which has
 to balance out compilation time needed and quality of generated quote. To
-improve warmup multiple optimisation levels could be used.to achieve earlier
+improve warmup multiple optimisation levels could be used. To achieve earlier
 execution of optimised code, lightly optimised, medium-quality code can be
 generated and used quickly, whilst high-performance native code is generated in
 parallel.
